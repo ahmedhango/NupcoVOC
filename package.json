@@ -1,0 +1,19 @@
+{
+  "name": "NupcoVOC",
+  "version": "0.1.0",
+  "description": "Pure native WebView opener for React Native (Android/iOS)",
+  "main": "src/index.js",
+  "react-native": "src/index.js",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/ahmedhango/NupcoVOC.git"
+  },
+  "keywords": ["react-native", "webview", "native-module"],
+  "peerDependencies": {
+    "react": ">=18.0.0",
+    "react-native": ">=0.72.0"
+  }
+}
+
+

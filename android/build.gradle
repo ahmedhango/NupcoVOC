@@ -1,0 +1,21 @@
+buildscript {
+  repositories { google(); mavenCentral() }
+  dependencies { classpath("com.android.tools.build:gradle:8.1.4") }
+}
+
+apply plugin: 'com.android.library'
+
+android {
+  namespace "com.nupcovoc"
+  compileSdkVersion 34
+  defaultConfig { minSdkVersion 23; targetSdkVersion 34 }
+  sourceSets { main { java.srcDirs = ["src/main/java"] } }
+}
+
+repositories { google(); mavenCentral() }
+
+dependencies {
+  implementation "com.facebook.react:react-native:+"
+}
+
+
