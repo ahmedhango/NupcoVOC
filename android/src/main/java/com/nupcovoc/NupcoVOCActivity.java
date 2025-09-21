@@ -36,7 +36,7 @@ public class NupcoVOCActivity extends Activity {
     String html = getIntent().getStringExtra("html");
     String htmlUrl = getIntent().getStringExtra("htmlUrl");
     boolean useDefault = getIntent().getBooleanExtra("useDefaultHtmlUrl", false);
-    if (isEmpty(html) && isEmpty(url) && isEmpty(htmlUrl) && useDefault) {
+    if ((isEmpty(html) && isEmpty(url) && isEmpty(htmlUrl)) && useDefault) {
       htmlUrl = "https://httpbin.org/html";
     }
 
@@ -108,10 +108,7 @@ public class NupcoVOCActivity extends Activity {
     wv.setWebChromeClient(new WebChromeClient());
     wv.addJavascriptInterface(new JsBridge(), BRIDGE_NAME);
     wv.setWebViewClient(new WebViewClient() {
-      @Override public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
-        // Keep navigation inside WebView (customize if needed)
-        return false;
-      }
+      @Override public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) { return false; }
     });
   }
 

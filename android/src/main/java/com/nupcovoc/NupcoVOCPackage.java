@@ -1,4 +1,3 @@
-
 package com.nupcovoc;
 
 import androidx.annotation.NonNull;

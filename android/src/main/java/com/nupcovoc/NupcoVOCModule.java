@@ -1,4 +1,3 @@
-
 package com.nupcovoc;
 
 import android.content.Intent;
