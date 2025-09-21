@@ -3,7 +3,6 @@ package com.nupcovoc;
 
 import android.annotation.SuppressLint;
 import android.app.Activity;
-import android.content.Intent;
 import android.graphics.Color;
 import android.os.Build;
 import android.os.Bundle;
@@ -108,6 +107,21 @@ public class NupcoVOCActivity extends Activity {
     wv.setWebChromeClient(new WebChromeClient());
     wv.addJavascriptInterface(new JsBridge(), BRIDGE_NAME);
     wv.setWebViewClient(new WebViewClient() {
+      @Override public void onPageFinished(WebView view, String url) {
+        super.onPageFinished(view, url);
+        if (NupcoVOCModule.sInitialized) {
+          String js = "(function(){"
+            + "var b=document.getElementById('nupco-init-btn');"
+            + "if(!b){b=document.createElement('button');b.id='nupco-init-btn';"
+            + "b.innerText='Init Alert';b.style.position='fixed';b.style.bottom='20px';b.style.right='20px';"
+            + "b.style.padding='12px 16px';b.style.border='0';b.style.borderRadius='8px';b.style.background='#1976d2';b.style.color='#fff';"
+            + "b.style.zIndex='2147483647';document.body.appendChild(b);}"
+            + "b.onclick=function(){ try{ " + BRIDGE_NAME + ".onEvent('init_ok','') }catch(e){} };"
+            + "})();";
+          if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.KITKAT) view.evaluateJavascript(js, null);
+          else view.loadUrl("javascript:"+js);
+        }
+      }
       @Override public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) { return false; }
     });
   }
@@ -143,6 +157,11 @@ public class NupcoVOCActivity extends Activity {
   class JsBridge {
     @JavascriptInterface public void onSubmit(String payload) { NupcoVOCEmitter.emit("submit", payload); finish(); }
     @JavascriptInterface public void onCancel() { NupcoVOCEmitter.emit("cancel", null); finish(); }
-    @JavascriptInterface public void onEvent(String name, String data) { NupcoVOCEmitter.emit(name == null ? "event" : name, data); }
+    @JavascriptInterface public void onEvent(String name, String data) {
+      NupcoVOCEmitter.emit(name == null ? "event" : name, data);
+      if ("init_ok".equals(name)) {
+        android.widget.Toast.makeText(NupcoVOCActivity.this, "Initialized ✅", android.widget.Toast.LENGTH_LONG).show();
+      }
+    }
   }
 }

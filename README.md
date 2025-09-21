@@ -1,28 +1,19 @@
 # NupcoVOC (React Native) — v1.0.0
-Native WebView modal + JS bridge for surveys (iOS/Android).
 
-## Install
-```
-npm i NupcoVOC
-cd ios && pod install && cd ..
-```
-
-## Usage (legacy names kept)
+## Usage
 ```ts
-import NupcoVOC, { openWebView, addWebViewListener } from 'NupcoVOC';
+import NupcoVOC, { initialize, openWebView, addWebViewListener } from 'NupcoVOC';
 
-const unsub = addWebViewListener(evt => { /* submit/cancel */ });
-await openWebView({ url: 'https://example.com/inline.html' });
-unsub();
+const ok = await initialize({ token: '1111', id: '12' });
+if (ok) {
+  const unsub = addWebViewListener(e => {
+    if (e.action === 'submit') console.log('Submit', e.data);
+  });
+  await openWebView({ url: 'https://example.com/inline.html' });
+  // هيظهر زر "Init Alert" جوّه الصفحة. لما تضغطه هيتطلع native alert.
+  // ...
+  unsub();
+} else {
+  Alert.alert('Error', 'Invalid token/id');
+}
 ```
-
-## Modern aliases
-```ts
-import NupcoVOC, { open, addListener } from 'NupcoVOC';
-```
-
-## Config
-- html?: string
-- url?: string
-- htmlUrl?: string
-- useDefaultHtmlUrl?: boolean  // if true and no source provided → uses https://httpbin.org/html

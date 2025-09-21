@@ -8,7 +8,6 @@ if (!Native) console.warn('[NupcoVOC] Native module not found. Did you run pod i
 
 const emitter = new NativeEventEmitter(Native);
 
-// Legacy names (kept for backward-compat)
 export const openWebView = (cfg: Cfg = {}) => {
   if (!Native?.open) throw new Error('NupcoVOCModule.open not found');
   return Native.open(cfg);
@@ -18,10 +17,14 @@ export const addWebViewListener = (cb: (e: VOCEvent) => void) => {
   return () => sub.remove();
 };
 
-// Modern aliases
 export const open = openWebView;
 export const addListener = addWebViewListener;
 
-// Default export includes both
-const defaultExport = { openWebView, addWebViewListener, open, addListener };
+// Initialization: validate token/id natively (fake endpoint)
+export const initialize = (cfg: { token: string; id: string }) => {
+  if (!Native?.initialize) throw new Error('NupcoVOCModule.initialize not found');
+  return Native.initialize(cfg);
+};
+
+const defaultExport = { openWebView, addWebViewListener, open, addListener, initialize };
 export default defaultExport;

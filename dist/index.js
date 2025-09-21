@@ -9,7 +9,6 @@ if (!Native) {
 
 const emitter = new NativeEventEmitter(Native);
 
-// Legacy names (kept for backward-compat)
 function openWebView(cfg = {}) {
   if (!Native || !Native.open) throw new Error('NupcoVOCModule.open not found');
   return Native.open(cfg);
@@ -19,17 +18,21 @@ function addWebViewListener(cb) {
   return () => sub.remove();
 }
 
-// Modern aliases
+function initialize(cfg) {
+  if (!Native || !Native.initialize) throw new Error('NupcoVOCModule.initialize not found');
+  return Native.initialize(cfg || {});
+}
+
 const open = openWebView;
 const addListener = addWebViewListener;
 
-// Default export includes both
-const defaultExport = { openWebView, addWebViewListener, open, addListener };
+const defaultExport = { openWebView, addWebViewListener, open, addListener, initialize };
 
 module.exports = Object.assign({}, defaultExport, {
   default: defaultExport,
   openWebView,
   addWebViewListener,
   open,
-  addListener
+  addListener,
+  initialize
 });
