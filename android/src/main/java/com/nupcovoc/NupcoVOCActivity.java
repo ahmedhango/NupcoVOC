@@ -132,22 +132,7 @@ public class NupcoVOCActivity extends Activity {
   }
 
   private String buildNativeHtml() {
-    return "<!doctype html><html><head><meta charset=\\\"utf-8\\\"/>"
-        + "<meta name=\\\"viewport\\\" content=\\\"width=device-width, initial-scale=1\\\"/>"
-        + "<title>Nupco VOC</title>"
-        + "<style>body{font-family:sans-serif;padding:16px}"
-        + "button{padding:10px 16px;margin:8px;border:0;border-radius:6px}"
-        + ".primary{background:#1976d2;color:#fff}.danger{background:#e53935;color:#fff}</style>"
-        + "</head><body>"
-        + "<h2>تقييم الخدمة</h2>"
-        + "<p>برجاء إدخال تقييمك وتعليقك ثم اضغط إرسال.</p>"
-        + "<label>التقييم (1-5): <input id=\\\"rating\\\" type=\\\"number\\\" min=\\\"1\\\" max=\\\"5\\\"/></label>"
-        + "<br/><label>التعليق:<br/><textarea id=\\\"fb\\\" rows=\\\"4\\\" style=\\\"width:100%\\\"></textarea></label>"
-        + "<div><button class=\\\"danger\\\" onclick=\\\"" + BRIDGE_NAME + ".onCancel()\\\">إلغاء</button>"
-        + "<button class=\\\"primary\\\" onclick=\\\"(function(){var r=document.getElementById('rating').value;"
-        + "var t=document.getElementById('fb').value;var p=JSON.stringify({rating:r,feedback:t,timestamp:Date.now()});"
-        + BRIDGE_NAME + ".onSubmit(p)})()\\\">إرسال</button></div>"
-        + "</body></html>";
+    return "";
   }
 
   private void fetchAndLoadAsync(final String url, final String fallbackHtml) {

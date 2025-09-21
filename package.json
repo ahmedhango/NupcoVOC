@@ -1,6 +1,6 @@
 {
   "name": "nupco-voc",
-  "version": "1.0.1",
+  "version": "1.0.0",
   "description": "Nupco VOC (Voice of Customer) WebView modal bridge for React Native (iOS/Android).",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
