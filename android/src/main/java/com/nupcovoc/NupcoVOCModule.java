@@ -2,6 +2,8 @@ package com.nupcovoc;
 
 import android.content.Intent;
 
+import androidx.annotation.NonNull;
+
 import com.facebook.react.bridge.Promise;
 import com.facebook.react.bridge.ReactApplicationContext;
 import com.facebook.react.bridge.ReactContextBaseJavaModule;
@@ -17,7 +19,13 @@ public class NupcoVOCModule extends ReactContextBaseJavaModule {
     NupcoVOCEmitter.setContext(context);
   }
 
-  @Override public String getName() { return "NupcoVOCModule"; }
+  @NonNull
+  @Override
+  public String getName() { return "NupcoVOCModule"; }
+
+  // Required by RN's new event emitter contract (no-ops but present)
+  @ReactMethod public void addListener(String eventName) {}
+  @ReactMethod public void removeListeners(double count) {}
 
   @ReactMethod
   public void open(ReadableMap config, Promise promise) {
@@ -25,11 +33,13 @@ public class NupcoVOCModule extends ReactContextBaseJavaModule {
       String url = config.hasKey("url") ? config.getString("url") : "";
       String html = config.hasKey("html") ? config.getString("html") : "";
       String htmlUrl = config.hasKey("htmlUrl") ? config.getString("htmlUrl") : "";
+
       Intent intent = new Intent(reactContext, NupcoVOCActivity.class);
       intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-      intent.putExtra("url", url);
-      intent.putExtra("html", html);
-      intent.putExtra("htmlUrl", htmlUrl);
+      if (url != null && !url.isEmpty()) intent.putExtra("url", url);
+      if (html != null && !html.isEmpty()) intent.putExtra("html", html);
+      if (htmlUrl != null && !htmlUrl.isEmpty()) intent.putExtra("htmlUrl", htmlUrl);
+
       reactContext.startActivity(intent);
       promise.resolve(true);
     } catch (Exception e) {
@@ -37,5 +47,3 @@ public class NupcoVOCModule extends ReactContextBaseJavaModule {
     }
   }
 }
-
-
