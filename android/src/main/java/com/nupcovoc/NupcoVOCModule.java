@@ -24,10 +24,12 @@ public class NupcoVOCModule extends ReactContextBaseJavaModule {
     try {
       String url = config.hasKey("url") ? config.getString("url") : "";
       String html = config.hasKey("html") ? config.getString("html") : "";
+      String htmlUrl = config.hasKey("htmlUrl") ? config.getString("htmlUrl") : "";
       Intent intent = new Intent(reactContext, NupcoVOCActivity.class);
       intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
       intent.putExtra("url", url);
       intent.putExtra("html", html);
+      intent.putExtra("htmlUrl", htmlUrl);
       reactContext.startActivity(intent);
       promise.resolve(true);
     } catch (Exception e) {
