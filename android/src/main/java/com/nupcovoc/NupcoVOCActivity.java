@@ -1,3 +1,4 @@
+
 package com.nupcovoc;
 
 import android.annotation.SuppressLint;
@@ -26,22 +27,19 @@ import java.net.URL;
 
 public class NupcoVOCActivity extends Activity {
   public static final String BRIDGE_NAME = "NupcoVOC";
-
   private WebView webView;
 
-  @Override
-  protected void onCreate(Bundle savedInstanceState) {
+  @Override protected void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
 
     String url = getIntent().getStringExtra("url");
     String html = getIntent().getStringExtra("html");
     String htmlUrl = getIntent().getStringExtra("htmlUrl");
-        boolean useDefault = getIntent().getBooleanExtra("useDefaultHtmlUrl", false);
-        if ((html == null || html.isEmpty()) && (url == null || url.isEmpty()) && (htmlUrl == null || htmlUrl.isEmpty()) && useDefault) {
-          htmlUrl = "https://httpbin.org/html";
-        }
+    boolean useDefault = getIntent().getBooleanExtra("useDefaultHtmlUrl", false);
+    if (isEmpty(html) && isEmpty(url) && isEmpty(htmlUrl) && useDefault) {
+      htmlUrl = "https://httpbin.org/html";
+    }
 
-    // Build UI
     LinearLayout root = new LinearLayout(this);
     root.setOrientation(LinearLayout.VERTICAL);
     root.setBackgroundColor(Color.WHITE);
@@ -54,48 +52,33 @@ public class NupcoVOCActivity extends Activity {
     int pad = (int) (16 * getResources().getDisplayMetrics().density);
     close.setPadding(pad, pad, pad, pad);
     close.setOnClickListener(v -> finish());
-    toolbar.addView(close, new FrameLayout.LayoutParams(
-        ViewGroup.LayoutParams.WRAP_CONTENT,
-        ViewGroup.LayoutParams.WRAP_CONTENT
-    ));
+    toolbar.addView(close, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
 
     webView = new WebView(this);
     configureWebView(webView);
 
-    root.addView(toolbar, new LinearLayout.LayoutParams(
-        ViewGroup.LayoutParams.MATCH_PARENT,
-        ViewGroup.LayoutParams.WRAP_CONTENT
-    ));
-    root.addView(webView, new LinearLayout.LayoutParams(
-        ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f
-    ));
+    root.addView(toolbar, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+    root.addView(webView, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
     setContentView(root);
 
-    // Load content with precedence: html > url > htmlUrl > native fallback
-    if (html != null && html.length() > 0) {
+    if (!isEmpty(html)) {
       webView.loadDataWithBaseURL(null, html, "text/html", "utf-8", null);
-    } else if (url != null && url.length() > 0) {
+    } else if (!isEmpty(url)) {
       webView.loadUrl(url);
-    } else if (htmlUrl != null && htmlUrl.length() > 0) {
-      fetchAndLoadAsync(htmlUrl, buildNativeHtml());
+    } else if (!isEmpty(htmlUrl)) {
+      fetchAndLoadAsync(htmlUrl);
     } else {
-      webView.loadDataWithBaseURL(null, buildNativeHtml(), "text/html", "utf-8", null);
+      webView.loadDataWithBaseURL(null, "", "text/html", "utf-8", null);
     }
   }
 
-  @Override
-  public void onBackPressed() {
-    if (webView != null && webView.canGoBack()) {
-      webView.goBack();
-    } else {
-      super.onBackPressed();
-    }
+  @Override public void onBackPressed() {
+    if (webView != null && webView.canGoBack()) webView.goBack();
+    else super.onBackPressed();
   }
 
-  @Override
-  protected void onDestroy() {
+  @Override protected void onDestroy() {
     if (webView != null) {
-      // Proper WebView cleanup
       ((ViewGroup) webView.getParent()).removeView(webView);
       webView.removeAllViews();
       webView.destroy();
@@ -103,6 +86,8 @@ public class NupcoVOCActivity extends Activity {
     }
     super.onDestroy();
   }
+
+  private static boolean isEmpty(String s) { return s == null || s.isEmpty(); }
 
   @SuppressLint({"SetJavaScriptEnabled"})
   private void configureWebView(WebView wv) {
@@ -123,37 +108,28 @@ public class NupcoVOCActivity extends Activity {
     wv.setWebChromeClient(new WebChromeClient());
     wv.addJavascriptInterface(new JsBridge(), BRIDGE_NAME);
     wv.setWebViewClient(new WebViewClient() {
-      @Override
-      public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
-        // Keep navigation inside WebView
+      @Override public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
+        // Keep navigation inside WebView (customize if needed)
         return false;
       }
     });
   }
 
-  private String buildNativeHtml() {
-    return "";
-  }
-
-  private void fetchAndLoadAsync(final String url, final String fallbackHtml) {
+  private void fetchAndLoadAsync(final String url) {
     final Handler main = new Handler(Looper.getMainLooper());
     new Thread(() -> {
       String result = null;
-      InputStream in = null;
-      ByteArrayOutputStream out = null;
-      HttpURLConnection conn = null;
+      InputStream in = null; ByteArrayOutputStream out = null; HttpURLConnection conn = null;
       try {
         URL u = new URL(url);
         conn = (HttpURLConnection) u.openConnection();
-        conn.setConnectTimeout(8000);
-        conn.setReadTimeout(10000);
+        conn.setConnectTimeout(8000); conn.setReadTimeout(10000);
         conn.setInstanceFollowRedirects(true);
         conn.setRequestProperty("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8");
         conn.connect();
         in = conn.getInputStream();
         out = new ByteArrayOutputStream();
-        byte[] buf = new byte[8192];
-        int n;
+        byte[] buf = new byte[8192]; int n;
         while ((n = in.read(buf)) > 0) out.write(buf, 0, n);
         result = out.toString("UTF-8");
       } catch (Exception ignored) {
@@ -162,27 +138,14 @@ public class NupcoVOCActivity extends Activity {
         try { if (out != null) out.close(); } catch (Exception ignored) {}
         if (conn != null) conn.disconnect();
       }
-      final String html = (result != null && result.length() > 0) ? result : fallbackHtml;
-      main.post(() -> {
-        if (webView != null) {
-          webView.loadDataWithBaseURL(null, html, "text/html", "utf-8", null);
-        }
-      });
+      final String html = (result != null && !result.isEmpty()) ? result : "";
+      main.post(() -> { if (webView != null) webView.loadDataWithBaseURL(null, html, "text/html", "utf-8", null); });
     }).start();
   }
 
-  /** JS bridge exposed to the page */
   class JsBridge {
-    @JavascriptInterface public void onSubmit(String payload) {
-      NupcoVOCEmitter.emit("submit", payload);
-      finish();
-    }
-    @JavascriptInterface public void onCancel() {
-      NupcoVOCEmitter.emit("cancel", null);
-      finish();
-    }
-    @JavascriptInterface public void onEvent(String name, String data) {
-      NupcoVOCEmitter.emit(name == null ? "event" : name, data);
-    }
+    @JavascriptInterface public void onSubmit(String payload) { NupcoVOCEmitter.emit("submit", payload); finish(); }
+    @JavascriptInterface public void onCancel() { NupcoVOCEmitter.emit("cancel", null); finish(); }
+    @JavascriptInterface public void onEvent(String name, String data) { NupcoVOCEmitter.emit(name == null ? "event" : name, data); }
   }
 }

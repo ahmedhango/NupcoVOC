@@ -1,5 +1,5 @@
 {
-  "name": "nupco-voc",
+  "name": "NupcoVOC",
   "version": "1.0.0",
   "description": "Nupco VOC (Voice of Customer) WebView modal bridge for React Native (iOS/Android).",
   "main": "dist/index.js",
@@ -17,7 +17,7 @@
   "keywords": [
     "react-native",
     "webview",
-    "in-app-survey",
+    "survey",
     "feedback",
     "voc"
   ],
@@ -35,7 +35,7 @@
   "license": "MIT",
   "repository": {
     "type": "git",
-    "url": "https://github.com/your-org/nupco-voc.git"
+    "url": "https://github.com/your-org/NupcoVOC.git"
   },
   "author": "Ahmed Aly"
 }

@@ -1,8 +1,1 @@
-module.exports = {
-  dependency: {
-    platforms: {
-      android: { sourceDir: 'android' },
-      ios: { project: 'ios/NupcoVOC.xcodeproj' },
-    },
-  },
-};
+module.exports = { dependency: { platforms: { android: { sourceDir: 'android' }, ios: { project: 'ios/NupcoVOC.xcodeproj' } } } };

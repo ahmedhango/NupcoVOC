@@ -1,41 +1,28 @@
 buildscript {
-    repositories {
-        google()
-        mavenCentral()
-    }
-    dependencies {
-        classpath("com.android.tools.build:gradle:8.3.2")
-    }
+  repositories { google(); mavenCentral() }
+  dependencies { classpath("com.android.tools.build:gradle:8.3.2") }
 }
-
 apply plugin: 'com.android.library'
 
 android {
-    namespace "com.nupcovoc"
-    compileSdkVersion 34
+  namespace "com.nupcovoc"
+  compileSdkVersion 34
 
-    defaultConfig {
-        minSdkVersion 21
-        targetSdkVersion 34
-        consumerProguardFiles 'consumer-rules.pro'
-    }
+  defaultConfig {
+    minSdkVersion 21
+    targetSdkVersion 34
+    consumerProguardFiles 'consumer-rules.pro'
+  }
 
-    buildTypes {
-        release {
-            minifyEnabled false
-        }
-    }
-    compileOptions {
-        sourceCompatibility JavaVersion.VERSION_11
-        targetCompatibility JavaVersion.VERSION_11
-    }
+  buildTypes { release { minifyEnabled false } }
+
+  compileOptions {
+    sourceCompatibility JavaVersion.VERSION_11
+    targetCompatibility JavaVersion.VERSION_11
+  }
 }
 
-repositories {
-    google()
-    mavenCentral()
-}
-
+repositories { google(); mavenCentral() }
 dependencies {
-    implementation 'com.facebook.react:react-android'
+  implementation 'com.facebook.react:react-android'
 }

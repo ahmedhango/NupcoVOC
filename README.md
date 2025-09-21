@@ -1,43 +1,28 @@
-# Nupco VOC (React Native Native Module)
-
-In-app VOC modal powered by a native WebView + JS bridge.
+# NupcoVOC (React Native) — v1.0.0
+Native WebView modal + JS bridge for surveys (iOS/Android).
 
 ## Install
-
-```bash
-npm i nupco-voc
-# or
-yarn add nupco-voc
 ```
-
-iOS:
-```bash
+npm i NupcoVOC
 cd ios && pod install && cd ..
 ```
 
-## Usage
-
+## Usage (legacy names kept)
 ```ts
-import NupcoVOC, { open, addListener } from 'nupco-voc';
+import NupcoVOC, { openWebView, addWebViewListener } from 'NupcoVOC';
 
-const unsub = addListener(evt => {
-  if (evt.action === 'submit') console.log('Submit:', evt.data);
-  if (evt.action === 'cancel') console.log('Cancel');
-});
-
-await open({ htmlUrl: 'https://example.com/inline.html' });
-// or open({ url: 'https://example.com' });
-// or open({ html: '<!doctype html>...</html>' });
-
+const unsub = addWebViewListener(evt => { /* submit/cancel */ });
+await openWebView({ url: 'https://example.com/inline.html' });
 unsub();
 ```
 
-## Android
-- Activity `com.nupcovoc.NupcoVOCActivity` is declared in the library manifest.
-- Min SDK 21, compile/target 34.
-- Uses `addJavascriptInterface` with @JavascriptInterface (API 17+).
+## Modern aliases
+```ts
+import NupcoVOC, { open, addListener } from 'NupcoVOC';
+```
 
-## iOS
-- `NupcoVOC.podspec` links `WebKit` and `React-Core`.
-- Bridge injected at DocumentStart, main-frame only.
-- Removes message handler on close.
+## Config
+- html?: string
+- url?: string
+- htmlUrl?: string
+- useDefaultHtmlUrl?: boolean  // if true and no source provided → uses https://httpbin.org/html

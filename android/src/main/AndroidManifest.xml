@@ -1,9 +1,8 @@
-<manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    package="com.nupcovoc">
-    <application>
-        <activity
-            android:name="com.nupcovoc.NupcoVOCActivity"
-            android:exported="false"
-            android:theme="@android:style/Theme.DeviceDefault.Light.NoActionBar" />
-    </application>
+<manifest xmlns:android="http://schemas.android.com/apk/res/android" package="com.nupcovoc">
+  <application>
+    <activity
+      android:name="com.nupcovoc.NupcoVOCActivity"
+      android:exported="false"
+      android:theme="@android:style/Theme.DeviceDefault.Light.NoActionBar" />
+  </application>
 </manifest>
