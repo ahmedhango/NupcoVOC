@@ -36,6 +36,10 @@ public class NupcoVOCActivity extends Activity {
     String url = getIntent().getStringExtra("url");
     String html = getIntent().getStringExtra("html");
     String htmlUrl = getIntent().getStringExtra("htmlUrl");
+        boolean useDefault = getIntent().getBooleanExtra("useDefaultHtmlUrl", false);
+        if ((html == null || html.isEmpty()) && (url == null || url.isEmpty()) && (htmlUrl == null || htmlUrl.isEmpty()) && useDefault) {
+          htmlUrl = "https://httpbin.org/html";
+        }
 
     // Build UI
     LinearLayout root = new LinearLayout(this);

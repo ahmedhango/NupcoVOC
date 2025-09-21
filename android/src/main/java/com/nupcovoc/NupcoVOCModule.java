@@ -35,8 +35,10 @@ public class NupcoVOCModule extends ReactContextBaseJavaModule {
       String htmlUrl = config.hasKey("htmlUrl") ? config.getString("htmlUrl") : "";
 
       Intent intent = new Intent(reactContext, NupcoVOCActivity.class);
-      intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
-      if (url != null && !url.isEmpty()) intent.putExtra("url", url);
+          intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
+          boolean useDefault = config.hasKey("useDefaultHtmlUrl") && !config.isNull("useDefaultHtmlUrl") && config.getBoolean("useDefaultHtmlUrl");
+          intent.putExtra("useDefaultHtmlUrl", useDefault);
+          if (url != null && !url.isEmpty()) intent.putExtra("url", url);
       if (html != null && !html.isEmpty()) intent.putExtra("html", html);
       if (htmlUrl != null && !htmlUrl.isEmpty()) intent.putExtra("htmlUrl", htmlUrl);
 

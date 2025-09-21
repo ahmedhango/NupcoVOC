@@ -1,0 +1,14 @@
+Pod::Spec.new do |s|
+  s.name         = "NupcoVOC"
+  s.version      = "1.0.0"
+  s.summary      = "Nupco VOC bridge for React Native"
+  s.license      = { :type => "MIT" }
+  s.homepage     = "https://github.com/your-org/nupco-voc"
+  s.author       = { "Ahmed Aly" => "dev@example.com" }
+  s.platform     = :ios, "12.0"
+  s.source       = { :git => "https://github.com/your-org/nupco-voc.git", :tag => s.version }
+  s.source_files = "ios/**/*.{h,m}"
+  s.requires_arc = true
+  s.dependency   "React-Core"
+  s.framework    = "WebKit"
+end

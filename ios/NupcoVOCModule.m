@@ -1,3 +1,4 @@
+
 #import "NupcoVOCModule.h"
 #import <WebKit/WebKit.h>
 #import <React/RCTLog.h>
@@ -13,12 +14,9 @@
 
 RCT_EXPORT_MODULE(NupcoVOCModule);
 
-// RCTEventEmitter requirements
 - (NSArray<NSString *> *)supportedEvents { return @[@"NupcoVOCEvent"]; }
 - (void)startObserving {}
 - (void)stopObserving {}
-
-#pragma mark - Public API
 
 RCT_EXPORT_METHOD(open:(NSDictionary *)config
                   resolver:(RCTPromiseResolveBlock)resolve
@@ -27,19 +25,21 @@ RCT_EXPORT_METHOD(open:(NSDictionary *)config
   dispatch_async(dispatch_get_main_queue(), ^{
     @try {
       NSString *url     = [config[@"url"] isKindOfClass:NSString.class] ? config[@"url"] : @"";
-      NSString *html    = [config[@"html"] isKindOfClass:NSString.class] ? config[@"html"] : @"";
-      NSString *htmlUrl = [config[@"htmlUrl"] isKindOfClass:NSString.class] ? config[@"htmlUrl"] : @"";
+  NSString *html    = [config[@"html"] isKindOfClass:NSString.class] ? config[@"html"] : @"";
+  NSString *htmlUrl = [config[@"htmlUrl"] isKindOfClass:NSString.class] ? config[@"htmlUrl"] : @"";
+  NSNumber *useDefault = [config objectForKey:@"useDefaultHtmlUrl"];
+  if (html.length == 0 && url.length == 0 && htmlUrl.length == 0 && [useDefault boolValue]) {
+    htmlUrl = @"https://httpbin.org/html";
+  }
 
       UIViewController *root = RCTPresentedViewController() ?: UIApplication.sharedApplication.delegate.window.rootViewController;
       if (!root) { resolve(@(NO)); return; }
 
-      // Build WKWebView configuration
       WKWebViewConfiguration *cfg = [WKWebViewConfiguration new];
       WKPreferences *prefs = [WKPreferences new];
       prefs.javaScriptEnabled = YES;
       cfg.preferences = prefs;
 
-      // Bridge JS injected at DocumentStart, main frame only
       self.userContentController = [WKUserContentController new];
       [self.userContentController addScriptMessageHandler:self name:@"NupcoVOC"];
 
@@ -63,10 +63,8 @@ RCT_EXPORT_METHOD(open:(NSDictionary *)config
       [self.userContentController addUserScript:script];
       cfg.userContentController = self.userContentController;
 
-      // WebView
       self.webView = [[WKWebView alloc] initWithFrame:CGRectZero configuration:cfg];
 
-      // Container VC + Close button
       UIViewController *vc = [UIViewController new];
       vc.view.backgroundColor = [UIColor whiteColor];
 
@@ -82,7 +80,6 @@ RCT_EXPORT_METHOD(open:(NSDictionary *)config
       UINavigationController *nav = [[UINavigationController alloc] initWithRootViewController:vc];
       self.presentedVC = nav;
 
-      // Load content by priority: html > url > htmlUrl > fallback
       if (html.length > 0) {
         [self.webView loadHTMLString:html baseURL:nil];
       } else if (url.length > 0) {
@@ -125,7 +122,6 @@ RCT_EXPORT_METHOD(open:(NSDictionary *)config
         [self _loadFallbackHTML];
       }
 
-      // Present and resolve when shown (النتيجة الحقيقة بتيجي عبر الإيفنتات)
       [root presentViewController:nav animated:YES completion:^{ resolve(@(YES)); }];
     }
     @catch (NSException *ex) {
@@ -134,15 +130,13 @@ RCT_EXPORT_METHOD(open:(NSDictionary *)config
   });
 }
 
-#pragma mark - Helpers
-
 - (void)_loadFallbackHTML
 {
   static NSString *nativeHtml;
   if (!nativeHtml) {
     nativeHtml =
-    @"<!doctype html><html><head><meta charset=\"utf-8\"/>"
-     "<meta name=\"viewport\" content=\"width=device-width, initial-scale=1\"/>"
+    @"<!doctype html><html><head><meta charset=\\"utf-8\\"/>"
+     "<meta name=\\"viewport\\" content=\\"width=device-width, initial-scale=1\\"/>"
      "<title>Nupco VOC</title>"
      "<style>body{font-family:-apple-system,Helvetica,Arial,sans-serif;padding:16px}"
      "button{padding:10px 16px;margin:8px;border:0;border-radius:8px}"
@@ -150,12 +144,12 @@ RCT_EXPORT_METHOD(open:(NSDictionary *)config
      "</head><body>"
      "<h2>تقييم الخدمة</h2>"
      "<p>برجاء إدخال تقييمك وتعليقك ثم اضغط إرسال.</p>"
-     "<label>التقييم (1-5): <input id=\"rating\" type=\"number\" min=\"1\" max=\"5\"/></label>"
-     "<br/><label>التعليق:<br/><textarea id=\"fb\" rows=\"4\" style=\"width:100%\"></textarea></label>"
-     "<div><button class=\"danger\" onclick=\"NupcoVOC.onCancel()\">إلغاء</button>"
-     "<button class=\"primary\" onclick=\"(function(){var r=document.getElementById('rating').value;"
+     "<label>التقييم (1-5): <input id=\\"rating\\" type=\\"number\\" min=\\"1\\" max=\\"5\\"/></label>"
+     "<br/><label>التعليق:<br/><textarea id=\\"fb\\" rows=\\"4\\" style=\\"width:100%\\"></textarea></label>"
+     "<div><button class=\\"danger\\" onclick=\\"NupcoVOC.onCancel()\\">إلغاء</button>"
+     "<button class=\\"primary\\" onclick=\\"(function(){var r=document.getElementById('rating').value;"
      "var t=document.getElementById('fb').value;"
-     "var p=JSON.stringify({rating:r,feedback:t,timestamp:Date.now()});NupcoVOC.onSubmit(p)})()\">إرسال</button></div>"
+     "var p=JSON.stringify({rating:r,feedback:t,timestamp:Date.now()});NupcoVOC.onSubmit(p)})()\\">إرسال</button></div>"
      "</body></html>";
   }
   [self.webView loadHTMLString:nativeHtml baseURL:nil];
@@ -163,7 +157,6 @@ RCT_EXPORT_METHOD(open:(NSDictionary *)config
 
 - (void)_cleanupBridge
 {
-  // مهم: إزالة الهاندلر عشان نتجنب أي memory retain cycles
   @try {
     [self.userContentController removeScriptMessageHandlerForName:@"NupcoVOC"];
   } @catch (__unused NSException *ex) {}
@@ -185,8 +178,6 @@ RCT_EXPORT_METHOD(open:(NSDictionary *)config
 {
   [self _cleanupBridge];
 }
-
-#pragma mark - WKScriptMessageHandler
 
 - (void)userContentController:(WKUserContentController *)userContentController
       didReceiveScriptMessage:(WKScriptMessage *)message
