@@ -1,6 +1,6 @@
 import { NativeEventEmitter, NativeModules } from 'react-native';
 
-export type Cfg = { html?: string; url?: string; htmlUrl?: string; useDefaultHtmlUrl?: boolean };
+export type OpenCfg = { html?: string; url?: string; htmlUrl?: string };
 export type VOCEvent = { action: string; data?: string | null };
 
 const Native = NativeModules.NupcoVOCModule;
@@ -8,7 +8,7 @@ if (!Native) console.warn('[NupcoVOC] Native module not found. Did you run pod i
 
 const emitter = new NativeEventEmitter(Native);
 
-export const openWebView = (cfg: Cfg = {}) => {
+export const openWebView = (cfg: OpenCfg = {}) => {
   if (!Native?.open) throw new Error('NupcoVOCModule.open not found');
   return Native.open(cfg);
 };
@@ -20,7 +20,6 @@ export const addWebViewListener = (cb: (e: VOCEvent) => void) => {
 export const open = openWebView;
 export const addListener = addWebViewListener;
 
-// Initialization: validate token/id natively (fake endpoint)
 export const initialize = (cfg: { token: string; id: string }) => {
   if (!Native?.initialize) throw new Error('NupcoVOCModule.initialize not found');
   return Native.initialize(cfg);

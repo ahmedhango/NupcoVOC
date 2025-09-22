@@ -1,7 +1,7 @@
+export type OpenCfg = { html?: string; url?: string; htmlUrl?: string };
 export type VOCEvent = { action: string; data?: string | null };
-export type Cfg = { html?: string; url?: string; htmlUrl?: string; useDefaultHtmlUrl?: boolean };
 
-export declare function openWebView(cfg?: Cfg): Promise<any>;
+export declare function openWebView(cfg?: OpenCfg): Promise<any>;
 export declare function addWebViewListener(cb: (e: VOCEvent) => void): () => void;
 export declare function initialize(cfg: { token: string; id: string }): Promise<boolean>;
 

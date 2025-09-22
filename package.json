@@ -1,7 +1,7 @@
 {
   "name": "NupcoVOC",
   "version": "1.0.0",
-  "description": "Nupco VOC (Voice of Customer) WebView modal bridge for React Native (iOS/Android).",
+  "description": "Nupco VOC (Voice of Customer) \u2014 native-only integration (JS displays only).",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "files": [
@@ -33,9 +33,5 @@
     "typescript": "^5.6.3"
   },
   "license": "MIT",
-  "repository": {
-    "type": "git",
-    "url": "https://github.com/your-org/NupcoVOC.git"
-  },
   "author": "Ahmed Aly"
 }

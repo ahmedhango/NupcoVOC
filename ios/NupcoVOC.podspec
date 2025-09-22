@@ -1,7 +1,7 @@
 Pod::Spec.new do |s|
   s.name         = "NupcoVOC"
   s.version      = "1.0.0"
-  s.summary      = "Nupco VOC bridge for React Native"
+  s.summary      = "Nupco VOC bridge — native-only integration (JS displays only)."
   s.license      = { :type => "MIT" }
   s.homepage     = "https://github.com/your-org/NupcoVOC"
   s.author       = { "Ahmed Aly" => "dev@example.com" }
