@@ -19,15 +19,23 @@ import java.io.InputStream;
 import java.io.OutputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
+import java.util.Locale;
+import java.util.HashMap;
+import java.util.Map;
 
 public class NupcoVOCModule extends ReactContextBaseJavaModule {
   static boolean sInitialized = false;
+  static volatile boolean sIsPresenting = false;
+  static volatile NupcoVOCActivity sCurrentActivity = null;
+  static Map<String, String> sExtraRequestHeaders = new HashMap<>();
 
-  // Native-only config
-  static final String TOKEN         = "1111";
-  static final String ID            = "12";
-  static final String AUTH_ENDPOINT = "https://example.com/api/auth";
-  static final String DATA_ENDPOINT = "https://example.com/api/inline-html";
+  // Defaults (can be overridden via config in open())
+  static String sToken = "";
+  static String sId = "";
+  static final String DEFAULT_AUTH_ENDPOINT = "https://example.com/api/auth";
+  static final String DEFAULT_DATA_ENDPOINT = "https://example.com/api/inline-html";
+  static final int DEFAULT_TIMEOUT_MS = 8000;
+  static final int DEFAULT_RETRIES    = 1; // additional attempts after the first
 
   private final ReactApplicationContext reactContext;
   public NupcoVOCModule(ReactApplicationContext context) {
@@ -40,20 +48,31 @@ public class NupcoVOCModule extends ReactContextBaseJavaModule {
   @ReactMethod public void addListener(String eventName) {}
   @ReactMethod public void removeListeners(double count) {}
 
+  @ReactMethod public void isOpen(Promise promise) { promise.resolve(sIsPresenting); }
+  @ReactMethod public void close() {
+    NupcoVOCActivity act = sCurrentActivity;
+    if (act != null) act.finish();
+  }
+
   @ReactMethod public void initialize(ReadableMap cfg, Promise promise) {
     try {
-      String token = cfg.hasKey("token") ? cfg.getString("token") : "";
-      String id = cfg.hasKey("id") ? cfg.getString("id") : "";
-      boolean ok = TOKEN.equals(token) && ID.equals(id);
-      sInitialized = ok;
-      promise.resolve(ok);
+      sToken = cfg.hasKey("token") ? cfg.getString("token") : "";
+      sId = cfg.hasKey("id") ? cfg.getString("id") : "";
+      sInitialized = sToken != null && !sToken.isEmpty();
+      promise.resolve(sInitialized);
     } catch (Exception e) { promise.reject("ERR_INIT", e); }
   }
 
   @ReactMethod public void open(ReadableMap config, Promise promise) {
+    // Prevent double-open while a session is already presented
+    if (sIsPresenting) {
+      Toast.makeText(reactContext, t("already_open"), Toast.LENGTH_SHORT).show();
+      promise.reject("ERR_ALREADY_OPEN", "NupcoVOC screen is already presented");
+      return;
+    }
     if (!sInitialized) {
-      Toast.makeText(reactContext, "Invalid token/id", Toast.LENGTH_LONG).show();
-      promise.resolve(false);
+      Toast.makeText(reactContext, t("invalid_token"), Toast.LENGTH_LONG).show();
+      promise.reject("ERR_NOT_INITIALIZED", "Module not initialized or invalid token/id");
       return;
     }
 
@@ -61,12 +80,27 @@ public class NupcoVOCModule extends ReactContextBaseJavaModule {
     String url = config.hasKey("url") ? config.getString("url") : "";
     String html = config.hasKey("html") ? config.getString("html") : "";
     String htmlUrl = config.hasKey("htmlUrl") ? config.getString("htmlUrl") : "";
+    final String authEndpoint = config.hasKey("authEndpoint") ? config.getString("authEndpoint") : DEFAULT_AUTH_ENDPOINT;
+    final String dataEndpoint = config.hasKey("dataEndpoint") ? config.getString("dataEndpoint") : DEFAULT_DATA_ENDPOINT;
+    final int timeoutMs = config.hasKey("timeoutMs") ? (int) config.getDouble("timeoutMs") : DEFAULT_TIMEOUT_MS;
+    final int retries   = config.hasKey("retries") ? (int) config.getDouble("retries") : DEFAULT_RETRIES;
+    sExtraRequestHeaders.clear();
+    if (config.hasKey("headers") && config.getMap("headers") != null) {
+      ReadableMap h = config.getMap("headers");
+      ReadableMapKeySetIterator it = h.keySetIterator();
+      while (it.hasNextKey()) {
+        String k = it.nextKey();
+        String v = h.getString(k);
+        if (k != null && v != null) sExtraRequestHeaders.put(k, v);
+      }
+    }
     if (!isEmpty(html) || !isEmpty(url) || !isEmpty(htmlUrl)) {
       Intent intent = new Intent(reactContext, NupcoVOCActivity.class);
       intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
       if (!isEmpty(html)) intent.putExtra("html", html);
       if (!isEmpty(url)) intent.putExtra("url", url);
       if (!isEmpty(htmlUrl)) intent.putExtra("htmlUrl", htmlUrl);
+      sIsPresenting = true;
       reactContext.startActivity(intent);
       promise.resolve(true);
       return;
@@ -74,24 +108,28 @@ public class NupcoVOCModule extends ReactContextBaseJavaModule {
 
     // Native-only flow: AUTH then DATA, prefetch HTML, then open activity with ready HTML.
     new Thread(() -> {
-      boolean authOk = doAuth();
-      if (!authOk) {
-        new Handler(Looper.getMainLooper()).post(() -> {
-          Toast.makeText(reactContext, "Auth failed", Toast.LENGTH_LONG).show();
-          promise.resolve(false);
-        });
-        return;
+      // If authEndpoint provided, perform it first; otherwise skip to data call
+      if (authEndpoint != null && !authEndpoint.isEmpty()) {
+        boolean authOk = doAuth(authEndpoint, timeoutMs, retries);
+        if (!authOk) {
+          new Handler(Looper.getMainLooper()).post(() -> {
+            Toast.makeText(reactContext, t("auth_failed"), Toast.LENGTH_LONG).show();
+            promise.reject("ERR_AUTH_FAILED", "Authentication request failed");
+          });
+          return;
+        }
       }
-      String htmlPrefetched = fetchDataHtml();
+      String htmlPrefetched = fetchDataHtml(dataEndpoint, timeoutMs, retries);
       new Handler(Looper.getMainLooper()).post(() -> {
         if (htmlPrefetched == null || htmlPrefetched.isEmpty()) {
-          Toast.makeText(reactContext, "Failed to load data", Toast.LENGTH_LONG).show();
-          promise.resolve(false);
+          Toast.makeText(reactContext, t("load_failed"), Toast.LENGTH_LONG).show();
+          promise.reject("ERR_DATA_FAILED", "Failed to fetch HTML data");
           return;
         }
         Intent intent = new Intent(reactContext, NupcoVOCActivity.class);
         intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK);
         intent.putExtra("html", htmlPrefetched); // preloaded HTML
+        sIsPresenting = true;
         reactContext.startActivity(intent);
         promise.resolve(true);
       });
@@ -100,17 +138,21 @@ public class NupcoVOCModule extends ReactContextBaseJavaModule {
 
   private static boolean isEmpty(String s) { return s == null || s.isEmpty(); }
 
-  private boolean doAuth() {
+  private boolean doAuth(String endpoint, int timeoutMs, int retries) {
     HttpURLConnection conn = null; InputStream in = null; ByteArrayOutputStream out = null;
     try {
-      URL u = new URL(AUTH_ENDPOINT);
+      URL u = new URL(endpoint);
       conn = (HttpURLConnection) u.openConnection();
-      conn.setConnectTimeout(8000); conn.setReadTimeout(10000);
+      conn.setConnectTimeout(timeoutMs); conn.setReadTimeout(Math.max(timeoutMs, timeoutMs + 2000));
       conn.setRequestMethod("POST");
       conn.setRequestProperty("Content-Type", "application/json; charset=utf-8");
       conn.setRequestProperty("Accept", "application/json,text/plain,*/*");
+      // apply custom headers
+      for (Map.Entry<String,String> e : sExtraRequestHeaders.entrySet()) {
+        conn.setRequestProperty(e.getKey(), e.getValue());
+      }
       conn.setDoOutput(true);
-      String body = "{\"token\":\"" + TOKEN + "\",\"id\":\"" + ID + "\"}";
+      String body = "{\"token\":\"" + (sToken==null?"":sToken) + "\",\"id\":\"" + (sId==null?"":sId) + "\"}";
       OutputStream os = conn.getOutputStream(); os.write(body.getBytes("UTF-8")); os.flush(); os.close();
 
       int code = conn.getResponseCode();
@@ -126,6 +168,7 @@ public class NupcoVOCModule extends ReactContextBaseJavaModule {
       // naive JSON check
       return resp.matches("(?s).*\\bok\\s*:\\s*true\\b.*") || resp.matches("(?s).*\\bstatus\\s*:\\s*\"?ok\"?.*");
     } catch (Exception ignored) {
+      if (retries > 0) return doAuth(endpoint, timeoutMs, retries - 1);
       return false;
     } finally {
       try { if (in != null) in.close(); } catch (Exception ignored) {}
@@ -134,19 +177,25 @@ public class NupcoVOCModule extends ReactContextBaseJavaModule {
     }
   }
 
-  private String fetchDataHtml() {
+  private String fetchDataHtml(String endpoint, int timeoutMs, int retries) {
     HttpURLConnection conn = null; InputStream in = null; ByteArrayOutputStream out = null;
     try {
-      URL u = new URL(DATA_ENDPOINT);
+      URL u = new URL(endpoint);
       conn = (HttpURLConnection) u.openConnection();
-      conn.setConnectTimeout(8000); conn.setReadTimeout(10000);
+      conn.setConnectTimeout(timeoutMs); conn.setReadTimeout(Math.max(timeoutMs, timeoutMs + 2000));
       conn.setInstanceFollowRedirects(true);
       conn.setRequestMethod("POST");
       conn.setRequestProperty("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8");
       conn.setRequestProperty("Content-Type", "application/json");
-      conn.setRequestProperty("X-Auth-Token", TOKEN);
+      // Prefer Authorization header if provided via initialize token; otherwise keep X-Auth-Token
+      if (sToken != null && !sToken.isEmpty()) conn.setRequestProperty("Authorization", "Bearer " + sToken);
+      conn.setRequestProperty("X-Auth-Token", sToken);
+      // apply custom headers
+      for (Map.Entry<String,String> e : sExtraRequestHeaders.entrySet()) {
+        conn.setRequestProperty(e.getKey(), e.getValue());
+      }
       conn.setDoOutput(true);
-      String body = "{\"id\":\"" + ID + "\"}";
+      String body = "{\"id\":\"" + (sId==null?"":sId) + "\"}";
       OutputStream os = conn.getOutputStream(); os.write(body.getBytes("UTF-8")); os.flush(); os.close();
 
       int code = conn.getResponseCode();
@@ -156,11 +205,30 @@ public class NupcoVOCModule extends ReactContextBaseJavaModule {
       while ((n = in.read(buf)) > 0) out.write(buf, 0, n);
       return out.toString("UTF-8");
     } catch (Exception ignored) {
+      if (retries > 0) return fetchDataHtml(endpoint, timeoutMs, retries - 1);
       return null;
     } finally {
       try { if (in != null) in.close(); } catch (Exception ignored) {}
       try { if (out != null) out.close(); } catch (Exception ignored) {}
       if (conn != null) conn.disconnect();
     }
+  }
+
+  // Simple i18n helper based on current locale
+  private String t(String key) {
+    Locale locale = reactContext.getResources().getConfiguration().getLocales().get(0);
+    String lang = locale == null ? "en" : locale.getLanguage();
+    boolean isArabic = lang != null && (lang.equals("ar") || lang.startsWith("ar"));
+    if (isArabic) {
+      if ("already_open".equals(key)) return "مفتوح بالفعل";
+      if ("invalid_token".equals(key)) return "رمز/معرّف غير صالح";
+      if ("auth_failed".equals(key)) return "فشل التحقق";
+      if ("load_failed".equals(key)) return "فشل تحميل البيانات";
+    }
+    if ("already_open".equals(key)) return "Already open";
+    if ("invalid_token".equals(key)) return "Invalid token/id";
+    if ("auth_failed".equals(key)) return "Auth failed";
+    if ("load_failed".equals(key)) return "Failed to load data";
+    return key;
   }
 }

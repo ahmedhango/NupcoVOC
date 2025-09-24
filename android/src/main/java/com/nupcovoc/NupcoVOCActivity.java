@@ -16,13 +16,18 @@ import android.webkit.WebViewClient;
 import android.widget.FrameLayout;
 import android.widget.ImageButton;
 import android.widget.LinearLayout;
+import android.widget.ProgressBar;
+import android.view.Gravity;
+import android.graphics.drawable.GradientDrawable;
 
 public class NupcoVOCActivity extends Activity {
   public static final String BRIDGE_NAME = "NupcoVOC";
   private WebView webView;
+  private ProgressBar progressBar;
 
   @Override protected void onCreate(Bundle savedInstanceState) {
     super.onCreate(savedInstanceState);
+    NupcoVOCModule.sCurrentActivity = this;
 
     String url = getIntent().getStringExtra("url");
     String html = getIntent().getStringExtra("html");
@@ -35,31 +40,85 @@ public class NupcoVOCActivity extends Activity {
     FrameLayout toolbar = new FrameLayout(this);
     ImageButton close = new ImageButton(this);
     close.setImageResource(android.R.drawable.ic_menu_close_clear_cancel);
-    close.setBackgroundColor(Color.TRANSPARENT);
-    int pad = (int) (16 * getResources().getDisplayMetrics().density);
+    int pad = (int) (12 * getResources().getDisplayMetrics().density);
+    GradientDrawable bg = new GradientDrawable();
+    bg.setColor(0xCCFFFFFF);
+    bg.setCornerRadius(24 * getResources().getDisplayMetrics().density);
+    close.setBackground(bg);
     close.setPadding(pad, pad, pad, pad);
     close.setOnClickListener(v -> finish());
-    toolbar.addView(close, new FrameLayout.LayoutParams(
-      ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+    FrameLayout.LayoutParams closeLp = new FrameLayout.LayoutParams(
+      ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+    closeLp.gravity = Gravity.END | Gravity.TOP;
+    closeLp.topMargin = (int) (12 * getResources().getDisplayMetrics().density);
+    closeLp.rightMargin = (int) (12 * getResources().getDisplayMetrics().density);
+    toolbar.addView(close, closeLp);
 
     webView = new WebView(this);
     configureWebView(webView);
+    progressBar = new ProgressBar(this, null, android.R.attr.progressBarStyleLarge);
+    FrameLayout progressHolder = new FrameLayout(this);
+    progressHolder.addView(progressBar, new FrameLayout.LayoutParams(
+      ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+    progressHolder.setForegroundGravity(android.view.Gravity.CENTER);
 
     root.addView(toolbar, new LinearLayout.LayoutParams(
       ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-    root.addView(webView, new LinearLayout.LayoutParams(
+    FrameLayout content = new FrameLayout(this);
+    content.addView(webView, new FrameLayout.LayoutParams(
+      ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+    content.addView(progressHolder, new FrameLayout.LayoutParams(
+      ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+    // floating close over web content too
+    ImageButton closeOverlay = new ImageButton(this);
+    closeOverlay.setImageResource(android.R.drawable.ic_menu_close_clear_cancel);
+    closeOverlay.setBackground(bg);
+    closeOverlay.setPadding(pad, pad, pad, pad);
+    closeOverlay.setOnClickListener(v -> finish());
+    FrameLayout.LayoutParams closeOverlayLp = new FrameLayout.LayoutParams(
+      ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
+    closeOverlayLp.gravity = Gravity.END | Gravity.TOP;
+    closeOverlayLp.topMargin = (int) (12 * getResources().getDisplayMetrics().density);
+    closeOverlayLp.rightMargin = (int) (12 * getResources().getDisplayMetrics().density);
+    content.addView(closeOverlay, closeOverlayLp);
+    root.addView(content, new LinearLayout.LayoutParams(
       ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
     setContentView(root);
+    NupcoVOCEmitter.emit("opened", null);
 
     if (html != null && !html.isEmpty()) {
       webView.loadDataWithBaseURL(null, html, "text/html", "utf-8", null);
     } else if (url != null && !url.isEmpty()) {
-      webView.loadUrl(url);
+      webView.loadUrl(url, NupcoVOCModule.sExtraRequestHeaders);
     } else if (htmlUrl != null && !htmlUrl.isEmpty()) {
-      webView.loadUrl(htmlUrl);
+      webView.loadUrl(htmlUrl, NupcoVOCModule.sExtraRequestHeaders);
     } else {
       webView.loadDataWithBaseURL(null, "", "text/html", "utf-8", null);
     }
+  }
+
+  @Override
+  public void onBackPressed() {
+    if (webView != null && webView.canGoBack()) {
+      webView.goBack();
+    } else {
+      super.onBackPressed();
+    }
+  }
+
+  @Override
+  protected void onDestroy() {
+    // Reset presenting flag and cleanup
+    NupcoVOCModule.sIsPresenting = false;
+    NupcoVOCEmitter.emit("closed", null);
+    NupcoVOCModule.sCurrentActivity = null;
+    if (webView != null) {
+      try { ((ViewGroup) webView.getParent()).removeView(webView); } catch (Throwable ignored) {}
+      webView.removeAllViews();
+      webView.destroy();
+      webView = null;
+    }
+    super.onDestroy();
   }
 
   @SuppressLint({"SetJavaScriptEnabled"})
@@ -69,11 +128,28 @@ public class NupcoVOCActivity extends Activity {
     s.setDomStorageEnabled(true);
     s.setLoadWithOverviewMode(true);
     s.setUseWideViewPort(true);
+    s.setAllowFileAccess(false);
+    s.setAllowContentAccess(true);
+    if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
+      s.setAllowFileAccessFromFileURLs(false);
+      s.setAllowUniversalAccessFromFileURLs(false);
+    }
     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) s.setSafeBrowsingEnabled(true);
     wv.setWebChromeClient(new WebChromeClient());
     wv.addJavascriptInterface(new JsBridge(), BRIDGE_NAME);
     wv.setWebViewClient(new WebViewClient() {
       @Override public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest req) { return false; }
+      @Override public void onPageStarted(WebView view, String url, android.graphics.Bitmap favicon) {
+        if (progressBar != null) progressBar.setVisibility(android.view.View.VISIBLE);
+      }
+      @Override public void onPageFinished(WebView view, String url) {
+        if (progressBar != null) progressBar.setVisibility(android.view.View.GONE);
+        NupcoVOCEmitter.emit("loaded", null);
+      }
+      @Override public void onReceivedError(WebView view, int errorCode, String description, String failingUrl) {
+        if (progressBar != null) progressBar.setVisibility(android.view.View.GONE);
+        NupcoVOCEmitter.emit("error", description);
+      }
     });
   }
 
