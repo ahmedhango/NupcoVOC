@@ -38,21 +38,21 @@ public class NupcoVOCActivity extends Activity {
     root.setBackgroundColor(Color.WHITE);
 
     FrameLayout toolbar = new FrameLayout(this);
-    ImageButton close = new ImageButton(this);
-    close.setImageResource(android.R.drawable.ic_menu_close_clear_cancel);
-    int pad = (int) (12 * getResources().getDisplayMetrics().density);
-    GradientDrawable bg = new GradientDrawable();
-    bg.setColor(0xCCFFFFFF);
-    bg.setCornerRadius(24 * getResources().getDisplayMetrics().density);
-    close.setBackground(bg);
-    close.setPadding(pad, pad, pad, pad);
-    close.setOnClickListener(v -> finish());
-    FrameLayout.LayoutParams closeLp = new FrameLayout.LayoutParams(
+    // Add close button (X)
+    android.widget.Button closeButton = new android.widget.Button(this);
+    closeButton.setText("✕");
+    closeButton.setTextSize(18);
+    closeButton.setTextColor(android.graphics.Color.BLACK);
+    closeButton.setBackgroundColor(android.graphics.Color.TRANSPARENT);
+    closeButton.setOnClickListener(v -> {
+      NupcoVOCEmitter.emit("cancel", null);
+      finish();
+    });
+    FrameLayout.LayoutParams closeParams = new FrameLayout.LayoutParams(
       ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-    closeLp.gravity = Gravity.END | Gravity.TOP;
-    closeLp.topMargin = (int) (12 * getResources().getDisplayMetrics().density);
-    closeLp.rightMargin = (int) (12 * getResources().getDisplayMetrics().density);
-    toolbar.addView(close, closeLp);
+    closeParams.gravity = android.view.Gravity.TOP | android.view.Gravity.END;
+    closeParams.setMargins(0, 16, 16, 0);
+    toolbar.addView(closeButton, closeParams);
 
     webView = new WebView(this);
     configureWebView(webView);
@@ -69,18 +69,7 @@ public class NupcoVOCActivity extends Activity {
       ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
     content.addView(progressHolder, new FrameLayout.LayoutParams(
       ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
-    // floating close over web content too
-    ImageButton closeOverlay = new ImageButton(this);
-    closeOverlay.setImageResource(android.R.drawable.ic_menu_close_clear_cancel);
-    closeOverlay.setBackground(bg);
-    closeOverlay.setPadding(pad, pad, pad, pad);
-    closeOverlay.setOnClickListener(v -> finish());
-    FrameLayout.LayoutParams closeOverlayLp = new FrameLayout.LayoutParams(
-      ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-    closeOverlayLp.gravity = Gravity.END | Gravity.TOP;
-    closeOverlayLp.topMargin = (int) (12 * getResources().getDisplayMetrics().density);
-    closeOverlayLp.rightMargin = (int) (12 * getResources().getDisplayMetrics().density);
-    content.addView(closeOverlay, closeOverlayLp);
+    // floating close over web content too - removed
     root.addView(content, new LinearLayout.LayoutParams(
       ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
     setContentView(root);
@@ -102,6 +91,8 @@ public class NupcoVOCActivity extends Activity {
     if (webView != null && webView.canGoBack()) {
       webView.goBack();
     } else {
+      // Emit cancel event before closing
+      NupcoVOCEmitter.emit("cancel", null);
       super.onBackPressed();
     }
   }
