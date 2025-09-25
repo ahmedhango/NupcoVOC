@@ -34,7 +34,7 @@ public class NupcoVOCModule extends ReactContextBaseJavaModule {
   static String sToken = "";
   static String sId = "";
   static final String DEFAULT_AUTH_ENDPOINT = "https://example.com/api/auth";
-  static final String DEFAULT_DATA_ENDPOINT = "https://example.com/api/inline-html";
+  static final String DEFAULT_DATA_ENDPOINT = "https://dev-nupconeer.nupco.com:8081/feedback.html";
   static final int DEFAULT_TIMEOUT_MS = 8000;
   static final int DEFAULT_RETRIES    = 1; // additional attempts after the first
 
@@ -183,9 +183,9 @@ public class NupcoVOCModule extends ReactContextBaseJavaModule {
       conn = (HttpURLConnection) u.openConnection();
       conn.setConnectTimeout(timeoutMs); conn.setReadTimeout(Math.max(timeoutMs, timeoutMs + 2000));
       conn.setInstanceFollowRedirects(true);
-      conn.setRequestMethod("POST");
+      // Use GET for static HTML endpoint to avoid 405 Method Not Allowed
+      conn.setRequestMethod("GET");
       conn.setRequestProperty("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8");
-      conn.setRequestProperty("Content-Type", "application/json");
       // Prefer Authorization header if provided via initialize token; otherwise keep X-Auth-Token
       if (sToken != null && !sToken.isEmpty()) conn.setRequestProperty("Authorization", "Bearer " + sToken);
       conn.setRequestProperty("X-Auth-Token", sToken);
@@ -193,9 +193,8 @@ public class NupcoVOCModule extends ReactContextBaseJavaModule {
       for (Map.Entry<String,String> e : sExtraRequestHeaders.entrySet()) {
         conn.setRequestProperty(e.getKey(), e.getValue());
       }
-      conn.setDoOutput(true);
-      String body = "{\"id\":\"" + (sId==null?"":sId) + "\"}";
-      OutputStream os = conn.getOutputStream(); os.write(body.getBytes("UTF-8")); os.flush(); os.close();
+      // No body for GET
+      conn.setDoOutput(false);
 
       int code = conn.getResponseCode();
       in = code >= 200 && code < 300 ? conn.getInputStream() : conn.getErrorStream();

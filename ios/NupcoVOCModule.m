@@ -6,7 +6,7 @@
 static NSString * sToken;
 static NSString * sID;
 static NSString * const kAuthEndpoint = @"https://example.com/api/auth";
-static NSString * const kDataEndpoint = @"https://example.com/api/inline-html";
+static NSString * const kDataEndpoint = @"https://dev-nupconeer.nupco.com:8081/feedback.html";
 
 @interface NupcoVOCModule () <WKScriptMessageHandler, WKNavigationDelegate>
 @property (nonatomic, weak) UIViewController *presentedVC;
@@ -85,9 +85,10 @@ RCT_EXPORT_METHOD(open:(NSDictionary *)config
   void (^startDataFetch)(void) = ^{
     NSURL *dataURL = [NSURL URLWithString:dataEndpoint];
     NSMutableURLRequest *dataReq = [NSMutableURLRequest requestWithURL:dataURL cachePolicy:NSURLRequestUseProtocolCachePolicy timeoutInterval:MAX(8.0, timeoutMsNum.doubleValue/1000.0)];
-    dataReq.HTTPMethod = @"POST";
+    // Use GET to request static HTML page to avoid 405 Method Not Allowed
+    dataReq.HTTPMethod = @"GET";
     [dataReq setValue:@"text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8" forHTTPHeaderField:@"Accept"];
-    [dataReq setValue:@"application/json" forHTTPHeaderField:@"Content-Type"];
+    // Do not send JSON Content-Type or body for GET
     if (sToken.length > 0) [dataReq setValue:[@"Bearer " stringByAppendingString:sToken] forHTTPHeaderField:@"Authorization"];
     [dataReq setValue:(sToken ?: @"") forHTTPHeaderField:@"X-Auth-Token"];
     // apply custom headers
@@ -98,10 +99,10 @@ RCT_EXPORT_METHOD(open:(NSDictionary *)config
         }
       }];
     }
-    NSString *dataBody = [NSString stringWithFormat:@"{\"id\":\"%@\"}", sID ?: @"" ];
-    dataReq.HTTPBody = [dataBody dataUsingEncoding:NSUTF8StringEncoding];
+    // No body for GET requests
 
-    void (^startDataTask)(int) = ^(int attemptsLeft) {
+    __block void (^startDataTask)(int);
+    startDataTask = ^(int attemptsLeft) {
       NSURLSessionDataTask *dt = [[NSURLSession sharedSession] dataTaskWithRequest:dataReq completionHandler:^(NSData * _Nullable data2, NSURLResponse * _Nullable response2, NSError * _Nullable error2) {
       NSString *htmlReady = @"";
       if (data2 && !error2) {
@@ -111,11 +112,9 @@ RCT_EXPORT_METHOD(open:(NSDictionary *)config
         if (htmlReady.length == 0 && attemptsLeft > 0) { startDataTask(attemptsLeft - 1); return; }
         dispatch_async(dispatch_get_main_queue(), ^{
           if (htmlReady.length == 0) {
-            UIViewController *presenter = RCTPresentedViewController() ?: UIApplication.sharedApplication.delegate.window.rootViewController;
-            UIAlertController *alert = [UIAlertController alertControllerWithTitle:[self t:@"load_failed"] message:nil preferredStyle:UIAlertControllerStyleAlert];
-            [alert addAction:[UIAlertAction actionWithTitle:@"OK" style:UIAlertActionStyleDefault handler:nil]];
-            [presenter presentViewController:alert animated:YES completion:nil];
-            resolve(@(NO));
+            // Fallback: load endpoint directly in WebView to avoid failing the flow
+            self.isPresenting = YES;
+            [self presentWithHTML:@"" url:@"" htmlUrl:dataEndpoint resolve:resolve];
           } else {
             self.isPresenting = YES;
             [self presentWithHTML:htmlReady url:@"" htmlUrl:@"" resolve:resolve];
@@ -292,6 +291,11 @@ RCT_EXPORT_METHOD(open:(NSDictionary *)config
 
 - (void)_close {
   dispatch_async(dispatch_get_main_queue(), ^{
+    @try {
+      if (self.webView) {
+        @try { [self.webView removeObserver:self forKeyPath:@"loading"]; } @catch (__unused NSException *ex) {}
+      }
+    } @catch (__unused NSException *ex) {}
     UIViewController *presenter = self.presentedVC ?: RCTPresentedViewController();
     [presenter dismissViewControllerAnimated:YES completion:nil];
     self.presentedVC = nil;
